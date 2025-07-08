@@ -11,7 +11,8 @@ const FeatureGrid = () => {
       icon: Calculator,
       color: "bg-blue-50 text-blue-600",
       action: "Calculate Area",
-      status: "Popular"
+      status: "Popular",
+      href: "/calculator"
     },
     {
       title: "AI Disease Detection",
@@ -19,7 +20,8 @@ const FeatureGrid = () => {
       icon: Camera,
       color: "bg-red-50 text-red-600",
       action: "Scan Crop",
-      status: "New"
+      status: "New",
+      href: "#disease"
     },
     {
       title: "Cost Estimation",
@@ -27,7 +29,8 @@ const FeatureGrid = () => {
       icon: DollarSign,
       color: "bg-green-50 text-green-600",
       action: "Plan Budget",
-      status: null
+      status: null,
+      href: "#costs"
     },
     {
       title: "Equipment Rental",
@@ -35,7 +38,8 @@ const FeatureGrid = () => {
       icon: Tractor,
       color: "bg-yellow-50 text-yellow-600",
       action: "Browse Equipment",
-      status: null
+      status: null,
+      href: "#equipment"
     },
     {
       title: "Market Intelligence",
@@ -43,7 +47,8 @@ const FeatureGrid = () => {
       icon: Newspaper,
       color: "bg-purple-50 text-purple-600",
       action: "View Prices",
-      status: "Updated"
+      status: "Updated",
+      href: "#news"
     },
     {
       title: "Supplier Network",
@@ -51,7 +56,8 @@ const FeatureGrid = () => {
       icon: Store,
       color: "bg-indigo-50 text-indigo-600",
       action: "Find Suppliers",
-      status: null
+      status: null,
+      href: "#suppliers"
     },
     {
       title: "IoT Monitoring",
@@ -59,7 +65,8 @@ const FeatureGrid = () => {
       icon: Smartphone,
       color: "bg-teal-50 text-teal-600",
       action: "View Sensors",
-      status: "Pro"
+      status: "Pro",
+      href: "#iot"
     },
     {
       title: "Analytics Dashboard",
@@ -67,7 +74,8 @@ const FeatureGrid = () => {
       icon: BarChart3,
       color: "bg-orange-50 text-orange-600",
       action: "View Analytics",
-      status: "Pro"
+      status: "Pro",
+      href: "#analytics"
     }
   ];
 
@@ -101,7 +109,10 @@ const FeatureGrid = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full bg-green-600 hover:bg-green-700 text-white">
+              <Button
+                className="w-full bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => window.location.href = feature.href}
+              >
                 {feature.action}
               </Button>
             </CardContent>

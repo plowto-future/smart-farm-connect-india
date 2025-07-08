@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, Save, Download, Trash2, Edit2, Calculator } from "lucide-react";
+import { MapPin, Save, Download, Trash2, Edit2, Calculator, Brain, Sprout } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import replicateClient from "@/lib/replicate";
 
 const FarmCalculator = () => {
   const { toast } = useToast();
@@ -23,6 +23,14 @@ const FarmCalculator = () => {
   const [farmDescription, setFarmDescription] = useState('');
   const [savedFarms, setSavedFarms] = useState([]);
   const [isDrawing, setIsDrawing] = useState(false);
+  
+  // AI Features
+  const [cropType, setCropType] = useState('');
+  const [soilType, setSoilType] = useState('');
+  const [climate, setClimate] = useState('');
+  const [soilPH, setSoilPH] = useState('');
+  const [aiAnalysis, setAiAnalysis] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Initialize Google Maps
   useEffect(() => {
@@ -82,6 +90,67 @@ const FarmCalculator = () => {
         return areaInSqMeters;
       default:
         return areaInSqMeters;
+    }
+  };
+
+  // AI Analysis Functions
+  const analyzeWithAI = async () => {
+    if (!area || area === 0) {
+      toast({
+        title: "Error",
+        description: "Please calculate the farm area first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsAnalyzing(true);
+    
+    try {
+      const farmData = {
+        area: area.toFixed(2),
+        unit,
+        crop: cropType,
+        soilType,
+        climate,
+        pH: soilPH
+      };
+
+      // Get soil analysis
+      const soilAnalysis = await replicateClient.analyzeSoil({
+        area: area.toFixed(2),
+        unit,
+        pH: soilPH,
+        nutrients: soilType,
+        moisture: climate
+      });
+
+      // Get yield prediction
+      const yieldPrediction = await replicateClient.predictYield(farmData);
+
+      if (soilAnalysis.success && yieldPrediction.success) {
+        setAiAnalysis({
+          soilAnalysis: soilAnalysis.data,
+          yieldPrediction: yieldPrediction.data,
+          farmData
+        });
+        
+        toast({
+          title: "AI Analysis Complete!",
+          description: "Your farm has been analyzed successfully.",
+        });
+      } else {
+        throw new Error('AI analysis failed');
+      }
+    } catch (error) {
+      console.error('AI Analysis error:', error);
+      toast({
+        title: "Analysis Error",
+        description: "Failed to analyze farm data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -145,6 +214,7 @@ const FarmCalculator = () => {
     setCoordinates([]);
     setArea(0);
     setIsDrawing(false);
+    setAiAnalysis(null);
   };
 
   // Save farm profile
@@ -165,6 +235,11 @@ const FarmCalculator = () => {
       coordinates,
       area: area.toFixed(2),
       unit,
+      cropType,
+      soilType,
+      climate,
+      soilPH,
+      aiAnalysis,
       createdAt: new Date().toLocaleDateString()
     };
 
@@ -197,6 +272,11 @@ const FarmCalculator = () => {
     setCoordinates(farm.coordinates);
     setArea(farm.area);
     setUnit(farm.unit);
+    setCropType(farm.cropType || '');
+    setSoilType(farm.soilType || '');
+    setClimate(farm.climate || '');
+    setSoilPH(farm.soilPH || '');
+    setAiAnalysis(farm.aiAnalysis || null);
     
     // Center map on the farm
     const bounds = new window.google.maps.LatLngBounds();
@@ -220,6 +300,11 @@ const FarmCalculator = () => {
       area: area.toFixed(2),
       unit,
       coordinates,
+      cropType,
+      soilType,
+      climate,
+      soilPH,
+      aiAnalysis,
       exportDate: new Date().toISOString()
     };
     
@@ -239,8 +324,9 @@ const FarmCalculator = () => {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="calculator" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="calculator">Area Calculator</TabsTrigger>
+          <TabsTrigger value="ai-analysis">AI Analysis</TabsTrigger>
           <TabsTrigger value="saved">Saved Farms ({savedFarms.length})</TabsTrigger>
         </TabsList>
 
@@ -315,7 +401,7 @@ const FarmCalculator = () => {
                     {area.toFixed(2)} {unit}
                   </p>
                   {coordinates.length > 0 && (
-                    <Badge className="mt-2 bg-green-100 text-green-700">
+                    <Badge variant="secondary" className="mt-2 bg-green-100 text-green-700">
                       {coordinates.length} points marked
                     </Badge>
                   )}
@@ -354,6 +440,127 @@ const FarmCalculator = () => {
           </div>
         </TabsContent>
 
+        <TabsContent value="ai-analysis" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Brain className="h-5 w-5" />
+                  <span>AI Farm Analysis</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cropType">Crop Type</Label>
+                  <Input
+                    id="cropType"
+                    placeholder="e.g., Wheat, Rice, Corn..."
+                    value={cropType}
+                    onChange={(e) => setCropType(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="soilType">Soil Type</Label>
+                  <select 
+                    id="soilType"
+                    className="w-full p-2 border rounded-md"
+                    value={soilType}
+                    onChange={(e) => setSoilType(e.target.value)}
+                  >
+                    <option value="">Select soil type...</option>
+                    <option value="clay">Clay</option>
+                    <option value="sandy">Sandy</option>
+                    <option value="loamy">Loamy</option>
+                    <option value="silty">Silty</option>
+                    <option value="peaty">Peaty</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="climate">Climate</Label>
+                  <select 
+                    id="climate"
+                    className="w-full p-2 border rounded-md"
+                    value={climate}
+                    onChange={(e) => setClimate(e.target.value)}
+                  >
+                    <option value="">Select climate...</option>
+                    <option value="tropical">Tropical</option>
+                    <option value="subtropical">Subtropical</option>
+                    <option value="temperate">Temperate</option>
+                    <option value="arid">Arid</option>
+                    <option value="semi-arid">Semi-arid</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="soilPH">Soil pH (Optional)</Label>
+                  <Input
+                    id="soilPH"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="14"
+                    placeholder="e.g., 6.5"
+                    value={soilPH}
+                    onChange={(e) => setSoilPH(e.target.value)}
+                  />
+                </div>
+
+                <Button 
+                  onClick={analyzeWithAI} 
+                  className="w-full"
+                  disabled={!area || isAnalyzing}
+                >
+                  <Sprout className="h-4 w-4 mr-2" />
+                  {isAnalyzing ? 'Analyzing...' : 'Analyze with AI'}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* AI Analysis Results */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Analysis Results</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isAnalyzing && (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
+                    <p className="mt-2 text-gray-600">Analyzing your farm data...</p>
+                  </div>
+                )}
+                
+                {aiAnalysis && !isAnalyzing && (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-blue-50 rounded-lg">
+                      <h4 className="font-semibold text-blue-800 mb-2">Soil Analysis</h4>
+                      <p className="text-sm text-blue-700 whitespace-pre-wrap">
+                        {aiAnalysis.soilAnalysis}
+                      </p>
+                    </div>
+                    
+                    <div className="p-4 bg-amber-50 rounded-lg">
+                      <h4 className="font-semibold text-amber-800 mb-2">Yield Prediction</h4>
+                      <p className="text-sm text-amber-700 whitespace-pre-wrap">
+                        {aiAnalysis.yieldPrediction}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                {!aiAnalysis && !isAnalyzing && (
+                  <div className="text-center py-8 text-gray-500">
+                    <Brain className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p>Fill in the farm details and click "Analyze with AI" to get insights about your farm.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
         <TabsContent value="saved">
           <Card>
             <CardHeader>
@@ -385,6 +592,14 @@ const FarmCalculator = () => {
                           <p className="text-lg font-bold text-green-600">
                             {farm.area} {farm.unit}
                           </p>
+                          {farm.cropType && (
+                            <p className="text-xs text-gray-500">Crop: {farm.cropType}</p>
+                          )}
+                          {farm.aiAnalysis && (
+                            <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                              AI Analyzed
+                            </Badge>
+                          )}
                           <p className="text-xs text-gray-500">Created: {farm.createdAt}</p>
                         </div>
                         <Button
